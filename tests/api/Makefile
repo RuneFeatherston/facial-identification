@@ -4,7 +4,7 @@
 # Configuration
 PYTHON := python3
 PIP := pip3
-PYTEST := pytest
+PYTEST := python3 -m pytest
 
 # Terminal colors
 BLUE := \033[34m

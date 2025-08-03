@@ -461,6 +461,14 @@ def run_api_tests(context='local'):
     """Run API tests using the tests/api Makefile."""
     logger.info("🧪 Running API contract tests...")
     
+    # Ensure API test dependencies are installed
+    setup_result = subprocess.run(['make', '-C', 'tests/api', 'setup'],
+                                capture_output=True, text=True)
+    if setup_result.returncode != 0:
+        logger.error("Failed to setup API test dependencies",
+                    stdout=setup_result.stdout, stderr=setup_result.stderr)
+        return 1
+    
     result = subprocess.run(['make', '-C', 'tests/api', 'test'],
                           capture_output=True, text=True)
     if result.returncode != 0:
