@@ -2,6 +2,7 @@
 pytest>=7.0.0
 requests>=2.28.0
 pytest-env>=0.8.1
+websockets>=11.0.0
 
 # Optional: Additional testing utilities
 # pytest-html>=3.1.0          # HTML test reports
