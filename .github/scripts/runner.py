@@ -303,28 +303,46 @@ def run_service_tests(context='ci'):
     logger.info("🚀 Starting service tests pipeline...")
     
     services = ['frontend', 'gateway-service', 'ml-service']
+    service_types = {
+        'frontend': 'node',
+        'gateway-service': 'go', 
+        'ml-service': 'python'
+    }
+    target_mapping = {
+        'setup': {'node': 'node-install', 'go': 'go-install', 'python': 'python-install-dev'}
+    }
     failed_services = []
     
     # Create logs directory
     logs_dir = Path('logs') if context == 'ci' else Path('.service-test-logs')
     logs_dir.mkdir(exist_ok=True)
     
+    # Step 0: Setup dependencies for all services
+    logger.info("🔧 Step 0/4: Setting up dependencies for all services...")
+    for service in services:
+        service_type = service_types.get(service)
+        setup_target = target_mapping['setup'].get(service_type)
+        if setup_target:
+            exit_code = run_service_operation_with_target(service, setup_target, 'setup', context, logs_dir)
+            if exit_code != 0:
+                failed_services.append(f"{service}:setup")
+    
     # Step 1: Build all services
-    logger.info("📦 Step 1/3: Building all services...")
+    logger.info("📦 Step 1/4: Building all services...")
     for service in services:
         exit_code = run_service_operation(service, 'build', context, logs_dir)
         if exit_code != 0:
             failed_services.append(f"{service}:build")
     
     # Step 2: Lint all services  
-    logger.info("🧹 Step 2/3: Linting all services...")
+    logger.info("🧹 Step 2/4: Linting all services...")
     for service in services:
         exit_code = run_service_operation(service, 'lint', context, logs_dir)
         if exit_code != 0:
             failed_services.append(f"{service}:lint")
     
     # Step 3: Test all services
-    logger.info("� Step 3/3: Running unit tests for all services...")
+    logger.info("🧪 Step 3/4: Running unit tests for all services...")
     for service in services:
         exit_code = run_service_operation(service, 'test', context, logs_dir)
         if exit_code != 0:
@@ -521,7 +539,11 @@ def run_setup_command(cmd, description, logs_dir):
 
 def run_service_operation_with_target(service, target, operation, context, logs_dir):
     """Run a service operation with a specific target."""
-    logger.info(f"  🎯 {operation.capitalize()}ing {service}...")
+    # Better formatting for setup vs other operations
+    if operation == 'setup':
+        logger.info(f"  🎯 Setting up {service}...")
+    else:
+        logger.info(f"  🎯 {operation.capitalize()}ing {service}...")
     
     # Create service-specific log file
     log_file = logs_dir / f"{service}-{operation}.log"
