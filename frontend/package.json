@@ -1,0 +1,16 @@
+{
+  "name": "frontend",
+  "version": "1.0.0",
+  "description": "Wordova frontend service",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "echo 'Frontend dev server would start here'",
+    "build": "echo 'Frontend build completed'",
+    "test": "echo 'Frontend tests passed'",
+    "lint": "echo 'Frontend linting completed'",
+    "prettier": "echo 'Frontend formatting completed'",
+    "prettier:check": "echo 'Frontend format check passed'"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}
