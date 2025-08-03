@@ -3,7 +3,7 @@ import { ConnectionStatus, WebSocketMessage } from '../types';
 
 interface UseWebSocketOptions {
   url: string;
-  onMessage?: (data: any) => void;
+  onMessage?: (data: WebSocketMessage) => void;
   onError?: (error: Error) => void;
 }
 
@@ -73,7 +73,7 @@ export function useWebSocket({ url, onMessage, onError }: UseWebSocketOptions) {
     }
   };
 
-  const sendMessage = (message: any) => {
+  const sendMessage = (message: WebSocketMessage | ArrayBuffer) => {
     if (wsRef.current?.readyState !== WebSocket.OPEN) {
       console.error('WebSocket is not connected');
       return;

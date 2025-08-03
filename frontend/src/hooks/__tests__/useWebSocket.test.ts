@@ -2,9 +2,21 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { useWebSocket } from '../useWebSocket'
 
-// Enhanced mock WebSocket for testing
-let mockWebSocket: any
-let mockWebSocketInstance: any
+// Mock WebSocket for testing
+interface MockWebSocket {
+  readyState: number
+  send: ReturnType<typeof vi.fn>
+  close: ReturnType<typeof vi.fn>
+  addEventListener: ReturnType<typeof vi.fn>
+  removeEventListener: ReturnType<typeof vi.fn>
+  onopen: ((event: Event) => void) | null
+  onclose: ((event: CloseEvent) => void) | null
+  onmessage: ((event: MessageEvent) => void) | null
+  onerror: ((event: Event) => void) | null
+}
+
+let mockWebSocketInstance: MockWebSocket
+let mockWebSocketConstructor: ReturnType<typeof vi.fn>
 
 beforeEach(() => {
   mockWebSocketInstance = {
@@ -19,13 +31,13 @@ beforeEach(() => {
     onerror: null,
   }
 
-  mockWebSocket = vi.fn(() => mockWebSocketInstance)
-  mockWebSocket.CONNECTING = 0
-  mockWebSocket.OPEN = 1
-  mockWebSocket.CLOSING = 2
-  mockWebSocket.CLOSED = 3
+  mockWebSocketConstructor = vi.fn(() => mockWebSocketInstance)
+  Object.defineProperty(mockWebSocketConstructor, 'CONNECTING', { value: 0 })
+  Object.defineProperty(mockWebSocketConstructor, 'OPEN', { value: 1 })
+  Object.defineProperty(mockWebSocketConstructor, 'CLOSING', { value: 2 })
+  Object.defineProperty(mockWebSocketConstructor, 'CLOSED', { value: 3 })
 
-  global.WebSocket = mockWebSocket as any
+  global.WebSocket = mockWebSocketConstructor as unknown as typeof WebSocket
 })
 
 afterEach(() => {
@@ -48,7 +60,7 @@ describe('useWebSocket', () => {
       renderHook(() => useWebSocket({ ...defaultOptions, url: testUrl }))
       
       // Assert
-      expect(mockWebSocket).not.toHaveBeenCalled() // Should not auto-connect
+      expect(mockWebSocketConstructor).not.toHaveBeenCalled() // Should not auto-connect
     })
 
     it('should set status to connecting when connect is called', async () => {
@@ -62,7 +74,7 @@ describe('useWebSocket', () => {
       
       // Assert
       expect(result.current.connectionStatus).toBe('connecting')
-      expect(mockWebSocket).toHaveBeenCalledWith('ws://localhost:8080')
+      expect(mockWebSocketConstructor).toHaveBeenCalledWith('ws://localhost:8080')
     })
 
     it('should set status to connected when WebSocket opens', async () => {
@@ -308,7 +320,7 @@ describe('useWebSocket', () => {
       })
       
       // Assert
-      expect(mockWebSocket).toHaveBeenCalledTimes(1)
+      expect(mockWebSocketConstructor).toHaveBeenCalledTimes(1)
     })
   })
 })

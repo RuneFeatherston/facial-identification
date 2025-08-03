@@ -6,9 +6,18 @@ export interface AuthState {
   error: string | null
 }
 
+export interface VideoFrameMetadata {
+  username: string
+  frameNumber: number
+  timestamp: number
+  width: number
+  height: number
+  format: string
+}
+
 export interface WebSocketMessage {
   type: string
-  [key: string]: any
+  [key: string]: unknown
 }
 
 export interface AuthResponse {

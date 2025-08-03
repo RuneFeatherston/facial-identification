@@ -4,7 +4,7 @@ import AuthForm from './components/AuthForm'
 import ConnectionStatus from './components/ConnectionStatus'
 import UserDashboard from './components/UserDashboard'
 import { useWebSocket } from './hooks/useWebSocket'
-import { AuthState } from './types'
+import { AuthState, VideoFrameMetadata } from './types'
 
 function App() {
   const [authState, setAuthState] = useState<AuthState>({
@@ -30,7 +30,7 @@ function App() {
           ...prev,
           status: 'authenticated',
           isAuthenticated: true,
-          token: data.token,
+          token: (data.token as string) || null,
           error: null
         }))
       } else if (data.type === 'auth_failed') {
@@ -39,7 +39,7 @@ function App() {
           status: 'failed',
           isAuthenticated: false,
           token: null,
-          error: data.message || 'Authentication failed'
+          error: (data.message as string) || 'Authentication failed'
         }))
       }
     },
@@ -76,7 +76,7 @@ function App() {
     }
   }
 
-  const handleVideoData = (frameData: ArrayBuffer, metadata: any) => {
+  const handleVideoData = (frameData: ArrayBuffer, metadata: VideoFrameMetadata) => {
     if (authState.status === 'authenticating' && connectionStatus === 'connected') {
       // Send frame metadata first (JSON)
       sendMessage({
@@ -143,7 +143,7 @@ function App() {
     return () => {
       disconnect()
     }
-  }, [])
+  }, [connect, disconnect])
 
   // Send auth challenge when connected and in authenticating state
   useEffect(() => {

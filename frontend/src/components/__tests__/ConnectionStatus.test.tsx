@@ -83,7 +83,7 @@ describe('ConnectionStatus', () => {
   describe('edge cases', () => {
     it('should handle unknown status gracefully', () => {
       // Arrange
-      const unknownStatus = 'invalid' as any
+      const unknownStatus = 'invalid' as unknown as 'connected' | 'disconnected' | 'connecting'
       
       // Act
       render(<ConnectionStatus status={unknownStatus} />)

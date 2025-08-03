@@ -1,9 +1,13 @@
-import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { describe, it, expect, vi, afterEach } from 'vitest'
+import { render, screen, act } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import AuthForm from '../AuthForm'
 
 describe('AuthForm', () => {
+  afterEach(() => {
+    vi.clearAllMocks()
+  })
+
   describe('when user submits valid username', () => {
     it('should call onStartAuth with trimmed username', async () => {
       // Arrange
@@ -17,8 +21,10 @@ describe('AuthForm', () => {
       const usernameInput = screen.getByLabelText(/username/i)
       const submitButton = screen.getByRole('button', { name: /start authentication/i })
       
-      await user.type(usernameInput, validUsername)
-      await user.click(submitButton)
+      await act(async () => {
+        await user.type(usernameInput, validUsername)
+        await user.click(submitButton)
+      })
       
       // Assert
       expect(mockOnStartAuth).toHaveBeenCalledOnce()
@@ -36,8 +42,10 @@ describe('AuthForm', () => {
       
       // Act
       const usernameInput = screen.getByLabelText(/username/i)
-      await user.type(usernameInput, usernameWithWhitespace)
-      await user.click(screen.getByRole('button', { name: /start authentication/i }))
+      await act(async () => {
+        await user.type(usernameInput, usernameWithWhitespace)
+        await user.click(screen.getByRole('button', { name: /start authentication/i }))
+      })
       
       // Assert
       expect(mockOnStartAuth).toHaveBeenCalledWith(expectedTrimmedUsername)
@@ -54,7 +62,9 @@ describe('AuthForm', () => {
       
       // Act
       const submitButton = screen.getByRole('button', { name: /start authentication/i })
-      await user.click(submitButton)
+      await act(async () => {
+        await user.click(submitButton)
+      })
       
       // Assert
       expect(mockOnStartAuth).not.toHaveBeenCalled()
@@ -70,8 +80,10 @@ describe('AuthForm', () => {
       
       // Act
       const usernameInput = screen.getByLabelText(/username/i)
-      await user.type(usernameInput, whitespaceOnlyUsername)
-      await user.click(screen.getByRole('button', { name: /start authentication/i }))
+      await act(async () => {
+        await user.type(usernameInput, whitespaceOnlyUsername)
+        await user.click(screen.getByRole('button', { name: /start authentication/i }))
+      })
       
       // Assert
       expect(mockOnStartAuth).not.toHaveBeenCalled()
@@ -100,7 +112,9 @@ describe('AuthForm', () => {
       
       // Act
       const usernameInput = screen.getByLabelText(/username/i)
-      await user.type(usernameInput, 'john')
+      await act(async () => {
+        await user.type(usernameInput, 'john')
+      })
       
       // Assert
       const submitButton = screen.getByRole('button', { name: /start authentication/i })
@@ -131,8 +145,10 @@ describe('AuthForm', () => {
       
       // Act
       const usernameInput = screen.getByLabelText(/username/i)
-      await user.type(usernameInput, validUsername)
-      await user.keyboard('{Enter}')
+      await act(async () => {
+        await user.type(usernameInput, validUsername)
+        await user.keyboard('{Enter}')
+      })
       
       // Assert
       expect(mockOnStartAuth).toHaveBeenCalledWith(validUsername)

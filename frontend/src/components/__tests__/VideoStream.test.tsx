@@ -14,18 +14,19 @@ const mockStream = {
   getTracks: () => [mockVideoTrack],
 }
 
-// Mock navigator.mediaDevices at module level
-Object.defineProperty(navigator, 'mediaDevices', {
-  value: {
-    getUserMedia: mockGetUserMedia,
-  },
-  writable: true,
-  configurable: true,
-})
-
+// Use the existing mock from test setup and configure it
 beforeEach(() => {
   // Reset mocks
   vi.clearAllMocks()
+  
+  // Configure the getUserMedia mock (already exists from test setup)
+  const mediaDevices = navigator.mediaDevices as unknown as {
+    getUserMedia: ReturnType<typeof vi.fn>
+  }
+  if (mediaDevices && mediaDevices.getUserMedia) {
+    mediaDevices.getUserMedia.mockImplementation(mockGetUserMedia)
+  }
+  
   mockGetUserMedia.mockResolvedValue(mockStream)
 
   // Mock video element properties
@@ -54,7 +55,7 @@ beforeEach(() => {
     clearRect: vi.fn(),
   }
 
-  HTMLCanvasElement.prototype.getContext = vi.fn(() => mockContext) as any
+  HTMLCanvasElement.prototype.getContext = vi.fn(() => mockContext) as unknown as typeof HTMLCanvasElement.prototype.getContext
 
   // Mock canvas toBlob
   HTMLCanvasElement.prototype.toBlob = vi.fn((callback: BlobCallback) => {
@@ -148,9 +149,9 @@ describe('VideoStream', () => {
       // Assert
       const videoElement = document.querySelector('video')
       expect(videoElement).toBeInTheDocument()
-      expect(videoElement).toHaveAttribute('autoPlay')
-      expect(videoElement).toHaveAttribute('playsInline')
-      expect(videoElement).toHaveAttribute('muted')
+      expect(videoElement).toHaveAttribute('autoplay', '')
+      expect(videoElement).toHaveAttribute('playsinline', '')
+      expect(videoElement).toHaveProperty('muted', true)
     })
 
     it('should render hidden canvas element', () => {

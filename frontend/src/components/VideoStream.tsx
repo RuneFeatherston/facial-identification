@@ -1,13 +1,5 @@
-import { useRef, useEffect, useState } from 'react'
-
-interface VideoFrameMetadata {
-  username: string
-  frameNumber: number
-  timestamp: number
-  width: number
-  height: number
-  format: string
-}
+import { useRef, useEffect, useState, useCallback } from 'react'
+import { VideoFrameMetadata } from '../types'
 
 interface VideoStreamProps {
   onVideoData: (frameData: ArrayBuffer, metadata: VideoFrameMetadata) => void
@@ -24,53 +16,7 @@ const VideoStream: React.FC<VideoStreamProps> = ({ onVideoData, username = '', i
   const [isStreaming, setIsStreaming] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const startCamera = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          width: { ideal: 640 },
-          height: { ideal: 480 },
-          facingMode: 'user'
-        },
-        audio: false
-      })
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream
-        streamRef.current = stream
-        setIsStreaming(true)
-        setError(null)
-
-        // Start capturing frames every 500ms (2 FPS) to avoid overwhelming the connection
-        if (isActive) {
-          intervalRef.current = setInterval(captureFrame, 500)
-        }
-      }
-    } catch (err) {
-      console.error('Error accessing camera:', err)
-      setError('Unable to access camera. Please check permissions.')
-    }
-  }
-
-  const stopCamera = () => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current)
-      intervalRef.current = null
-    }
-
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop())
-      streamRef.current = null
-    }
-
-    if (videoRef.current) {
-      videoRef.current.srcObject = null
-    }
-
-    setIsStreaming(false)
-  }
-
-  const captureFrame = () => {
+  const captureFrame = useCallback(() => {
     const video = videoRef.current
     const canvas = canvasRef.current
 
@@ -100,6 +46,52 @@ const VideoStream: React.FC<VideoStreamProps> = ({ onVideoData, username = '', i
         }, 'image/jpeg', 0.8) // JPEG with 80% quality for good balance
       }
     }
+  }, [isActive, username, onVideoData])
+
+  const startCamera = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          width: { ideal: 640 },
+          height: { ideal: 480 },
+          facingMode: 'user'
+        },
+        audio: false
+      })
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream
+        streamRef.current = stream
+        setIsStreaming(true)
+        setError(null)
+
+        // Start capturing frames every 500ms (2 FPS) to avoid overwhelming the connection
+        if (isActive) {
+          intervalRef.current = setInterval(captureFrame, 500)
+        }
+      }
+    } catch (err) {
+      console.error('Error accessing camera:', err)
+      setError('Unable to access camera. Please check permissions.')
+    }
+  }, [isActive, captureFrame])
+
+  const stopCamera = () => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current)
+      intervalRef.current = null
+    }
+
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop())
+      streamRef.current = null
+    }
+
+    if (videoRef.current) {
+      videoRef.current.srcObject = null
+    }
+
+    setIsStreaming(false)
   }
 
   useEffect(() => {
@@ -108,7 +100,7 @@ const VideoStream: React.FC<VideoStreamProps> = ({ onVideoData, username = '', i
     return () => {
       stopCamera()
     }
-  }, [])
+  }, [startCamera])
 
   useEffect(() => {
     // Start/stop frame capture based on isActive
@@ -118,7 +110,7 @@ const VideoStream: React.FC<VideoStreamProps> = ({ onVideoData, username = '', i
       clearInterval(intervalRef.current)
       intervalRef.current = null
     }
-  }, [isActive, isStreaming])
+  }, [isActive, isStreaming, captureFrame])
 
   if (error) {
     return (
