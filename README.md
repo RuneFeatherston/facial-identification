@@ -1,4 +1,4 @@
-# Wordova Web
+# Facial Identification Authenticator
 
 - **`frontend/`** - Web UI application (Node.js/React/Vite)
 - **`gateway-service/`** - API Gateway service (Go)

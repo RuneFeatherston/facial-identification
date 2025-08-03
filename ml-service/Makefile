@@ -18,9 +18,9 @@ RESET := \033[0m
 .PHONY: dev run build test lint clean help
 
 # Generic target aliases (for compatibility with runner script)
-build: python-install
-test: python-test
-lint: python-lint-score
+build: python-install-dev
+test: python-install-dev python-test
+lint: python-install-dev python-lint-score
 clean: python-clean
 
 # Help target
