@@ -305,53 +305,109 @@ def run_service_tests(context='ci'):
     services = ['frontend', 'gateway-service', 'ml-service']
     failed_services = []
     
+    # Create logs directory
+    logs_dir = Path('logs') if context == 'ci' else Path('.service-test-logs')
+    logs_dir.mkdir(exist_ok=True)
+    
     # Step 1: Build all services
     logger.info("📦 Step 1/3: Building all services...")
     for service in services:
-        logger.info(f"Building {service}...")
-        result = subprocess.run(['make', '-C', service, 'build'], 
-                              capture_output=True, text=True)
-        if result.returncode != 0:
-            logger.error(f"Build failed for {service}", 
-                        stdout=result.stdout, stderr=result.stderr)
+        exit_code = run_service_operation(service, 'build', context, logs_dir)
+        if exit_code != 0:
             failed_services.append(f"{service}:build")
-        else:
-            logger.info(f"✅ {service} built successfully")
     
     # Step 2: Lint all services  
     logger.info("🧹 Step 2/3: Linting all services...")
     for service in services:
-        logger.info(f"Linting {service}...")
-        result = subprocess.run(['make', '-C', service, 'lint'],
-                              capture_output=True, text=True)
-        if result.returncode != 0:
-            logger.error(f"Lint failed for {service}",
-                        stdout=result.stdout, stderr=result.stderr)
+        exit_code = run_service_operation(service, 'lint', context, logs_dir)
+        if exit_code != 0:
             failed_services.append(f"{service}:lint")
-        else:
-            logger.info(f"✅ {service} passed lint checks")
     
     # Step 3: Test all services
-    logger.info("🧪 Step 3/3: Running unit tests for all services...")
+    logger.info("� Step 3/3: Running unit tests for all services...")
     for service in services:
-        logger.info(f"Testing {service}...")
-        result = subprocess.run(['make', '-C', service, 'test'],
-                              capture_output=True, text=True)
-        if result.returncode != 0:
-            logger.error(f"Tests failed for {service}",
-                        stdout=result.stdout, stderr=result.stderr)
+        exit_code = run_service_operation(service, 'test', context, logs_dir)
+        if exit_code != 0:
             failed_services.append(f"{service}:test")
-        else:
-            logger.info(f"✅ {service} tests passed")
     
     # Summary
     if failed_services:
-        logger.error("❌ Service tests failed!", failed_operations=failed_services)
+        logger.error("❌ Service tests failed!")
+        logger.error(f"Failed operations: {', '.join(failed_services)}")
+        logger.error(f"💡 Check detailed logs in: {logs_dir}/")
         return 1
     else:
         logger.info("🎉 All service tests completed successfully!")
         logger.info("✅ Build, lint, and unit tests passed for all services")
         return 0
+
+
+def run_service_operation(service, operation, context, logs_dir):
+    """Run a single operation for a service with improved logging."""
+    operation_icons = {
+        'build': '📦',
+        'lint': '🧹', 
+        'test': '🧪'
+    }
+    
+    icon = operation_icons.get(operation, '🔧')
+    logger.info(f"  {icon} {operation.capitalize()}ing {service}...")
+    
+    # Create service-specific log file
+    log_file = logs_dir / f"{service}-{operation}.log"
+    
+    # Run the command
+    start_time = time.time()
+    result = subprocess.run(['make', '-C', service, operation], 
+                          capture_output=True, text=True)
+    duration = time.time() - start_time
+    
+    # Write detailed log file
+    with open(log_file, 'w') as f:
+        f.write(f"=== {service.upper()} {operation.upper()} LOG ===\n")
+        f.write(f"Context: {context}\n")
+        f.write(f"Command: make -C {service} {operation}\n")
+        f.write(f"Exit Code: {result.returncode}\n")
+        f.write(f"Duration: {duration:.2f}s\n")
+        f.write(f"Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+        f.write("=" * 50 + "\n\n")
+        
+        if result.stdout:
+            f.write("STDOUT:\n")
+            f.write(result.stdout)
+            f.write("\n" + "=" * 50 + "\n\n")
+        
+        if result.stderr:
+            f.write("STDERR:\n")
+            f.write(result.stderr)
+            f.write("\n" + "=" * 50 + "\n")
+    
+    if result.returncode == 0:
+        logger.info(f"    ✅ {service} {operation} completed ({duration:.1f}s)")
+        return 0
+    else:
+        logger.error(f"    ❌ {service} {operation} failed ({duration:.1f}s)")
+        
+        # Show error preview for immediate context
+        if result.stderr.strip():
+            # Show first meaningful error line
+            error_lines = [line.strip() for line in result.stderr.split('\n') if line.strip()]
+            if error_lines:
+                # Find the most relevant error line (skip common noise)
+                relevant_error = None
+                for line in error_lines:
+                    if any(keyword in line.lower() for keyword in ['error', 'failed', 'exception', '✗', '❌']):
+                        relevant_error = line
+                        break
+                
+                if relevant_error:
+                    logger.error(f"    💥 {relevant_error}")
+                elif error_lines:
+                    logger.error(f"    💥 {error_lines[-1]}")
+        
+        # Point to detailed log
+        logger.error(f"    📄 Full log: {log_file}")
+        return 1
 
 
 def run_individual_operation(mode, context='local'):
@@ -384,62 +440,143 @@ def run_individual_operation(mode, context='local'):
     icon, action = mode_info.get(mode, ('🔧', f'Running {mode}'))
     logger.info(f"{icon} {action} all services...")
     
+    # Create logs directory
+    logs_dir = Path('logs') if context == 'ci' else Path(f'.{mode}-logs')
+    logs_dir.mkdir(exist_ok=True)
+    
     failed_services = []
     
     # Special handling for setup
     if mode == 'setup':
-        logger.info("Installing runner script dependencies...")
-        result = subprocess.run(['pip', 'install', '-r', '.github/scripts/requirements.txt'],
-                              capture_output=True, text=True)
-        if result.returncode != 0:
-            logger.error("Failed to install runner dependencies", 
-                        stdout=result.stdout, stderr=result.stderr)
+        logger.info("  🔧 Installing runner script dependencies...")
+        if not run_setup_command(['pip', 'install', '-r', '.github/scripts/requirements.txt'], 
+                                "runner dependencies", logs_dir):
             return 1
-        else:
-            logger.debug("Runner dependencies installed", stdout=result.stdout)
         
-        logger.info("Setting up API test dependencies...")
-        result = subprocess.run(['make', '-C', 'tests/api', 'setup'],
-                              capture_output=True, text=True)
-        if result.returncode != 0:
-            logger.error("Failed to setup API tests",
-                        stdout=result.stdout, stderr=result.stderr)
+        logger.info("  🔧 Setting up API test dependencies...")
+        if not run_setup_command(['make', '-C', 'tests/api', 'setup'], 
+                                "API test dependencies", logs_dir):
             return 1
-        else:
-            logger.debug("API test dependencies setup completed", stdout=result.stdout)
     
     # Run operation for each service
     for service, language in services.items():
-        logger.info(f"{action} {service}...")
-        
         # Get the language-specific target
         target = target_mapping.get(mode, {}).get(language)
         if target is None:
             if mode == 'build' and language == 'python':
-                logger.info(f"✅ {service} {mode} completed (no build step needed for Python)")
+                logger.info(f"  ✅ {service} {mode} completed (no build step needed for Python)")
                 continue
             else:
-                logger.warning(f"No {mode} target defined for {service} ({language})")
+                logger.warning(f"  ⚠️ No {mode} target defined for {service} ({language})")
                 continue
-            
-        result = subprocess.run(['make', '-C', service, target],
-                              capture_output=True, text=True)
-            
-        if result.returncode != 0:
-            logger.error(f"{action} failed for {service}",
-                        stdout=result.stdout, stderr=result.stderr)
+        
+        exit_code = run_service_operation_with_target(service, target, mode, context, logs_dir)
+        if exit_code != 0:
             failed_services.append(service)
-        else:
-            logger.info(f"✅ {service} {mode} completed")
-            # Log subprocess output at DEBUG level (hidden by default)
-            logger.debug(f"{service} {mode} output", stdout=result.stdout, stderr=result.stderr)
     
     if failed_services:
-        logger.error(f"❌ {action} failed for services!", failed_services=failed_services)
+        logger.error(f"❌ {action} failed for services: {', '.join(failed_services)}")
+        logger.error(f"💡 Check detailed logs in: {logs_dir}/")
         return 1
     else:
         logger.info(f"🎉 {action} completed successfully for all services!")
         return 0
+
+
+def run_setup_command(cmd, description, logs_dir):
+    """Run a setup command with proper logging."""
+    log_file = logs_dir / f"setup-{description.replace(' ', '_')}.log"
+    
+    start_time = time.time()
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    duration = time.time() - start_time
+    
+    # Write detailed log
+    with open(log_file, 'w') as f:
+        f.write(f"=== SETUP: {description.upper()} ===\n")
+        f.write(f"Command: {' '.join(cmd)}\n")
+        f.write(f"Exit Code: {result.returncode}\n")
+        f.write(f"Duration: {duration:.2f}s\n")
+        f.write(f"Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+        f.write("=" * 50 + "\n\n")
+        
+        if result.stdout:
+            f.write("STDOUT:\n")
+            f.write(result.stdout)
+            f.write("\n" + "=" * 50 + "\n\n")
+        
+        if result.stderr:
+            f.write("STDERR:\n")
+            f.write(result.stderr)
+            f.write("\n" + "=" * 50 + "\n")
+    
+    if result.returncode == 0:
+        logger.info(f"    ✅ {description} completed ({duration:.1f}s)")
+        return True
+    else:
+        logger.error(f"    ❌ {description} failed ({duration:.1f}s)")
+        logger.error(f"    📄 Full log: {log_file}")
+        return False
+
+
+def run_service_operation_with_target(service, target, operation, context, logs_dir):
+    """Run a service operation with a specific target."""
+    logger.info(f"  🎯 {operation.capitalize()}ing {service}...")
+    
+    # Create service-specific log file
+    log_file = logs_dir / f"{service}-{operation}.log"
+    
+    # Run the command
+    start_time = time.time()
+    result = subprocess.run(['make', '-C', service, target],
+                          capture_output=True, text=True)
+    duration = time.time() - start_time
+    
+    # Write detailed log file
+    with open(log_file, 'w') as f:
+        f.write(f"=== {service.upper()} {operation.upper()} LOG ===\n")
+        f.write(f"Context: {context}\n")
+        f.write(f"Command: make -C {service} {target}\n")
+        f.write(f"Exit Code: {result.returncode}\n")
+        f.write(f"Duration: {duration:.2f}s\n")
+        f.write(f"Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+        f.write("=" * 50 + "\n\n")
+        
+        if result.stdout:
+            f.write("STDOUT:\n")
+            f.write(result.stdout)
+            f.write("\n" + "=" * 50 + "\n\n")
+        
+        if result.stderr:
+            f.write("STDERR:\n")
+            f.write(result.stderr)
+            f.write("\n" + "=" * 50 + "\n")
+    
+    if result.returncode == 0:
+        logger.info(f"    ✅ {service} {operation} completed ({duration:.1f}s)")
+        return 0
+    else:
+        logger.error(f"    ❌ {service} {operation} failed ({duration:.1f}s)")
+        
+        # Show error preview for immediate context
+        if result.stderr.strip():
+            error_lines = [line.strip() for line in result.stderr.split('\n') if line.strip()]
+            if error_lines:
+                # Find the most relevant error line
+                relevant_error = None
+                for line in error_lines:
+                    if any(keyword in line.lower() for keyword in ['error', 'failed', 'exception', '✗', '❌']):
+                        relevant_error = line
+                        break
+                
+                if relevant_error:
+                    logger.error(f"    💥 {relevant_error}")
+                elif error_lines:
+                    logger.error(f"    💥 {error_lines[-1]}")
+        
+        # Point to detailed log
+        logger.error(f"    📄 Full log: {log_file}")
+        return 1
 
 
 def run_service_target(service, target, context='local'):

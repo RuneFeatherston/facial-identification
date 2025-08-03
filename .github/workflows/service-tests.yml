@@ -60,6 +60,20 @@ jobs:
           # Use mock/test URLs instead of real services
           GATEWAY_BASE_URL: http://localhost:8080
           ML_BASE_URL: http://localhost:8000
+      
+      - name: Upload detailed logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: service-test-logs-${{ github.run_number }}
+          path: |
+            logs/
+            .service-test-logs/
+            .test-logs/
+            .lint-logs/
+            .build-logs/
+          retention-days: 30
+          if-no-files-found: ignore
   
   # Integration tests (only run on main branch for production readiness)
   integration:

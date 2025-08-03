@@ -4,6 +4,7 @@ import pytest
 import os
 from clients.gateway_client import GatewayClient
 from clients.ml_client import MLClient
+from clients.websocket_client import WebSocketClient
 
 
 @pytest.fixture
