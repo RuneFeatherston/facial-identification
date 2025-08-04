@@ -1,8 +1,40 @@
 # Facial Identification Authenticator
 
-- **`frontend/`** - Web UI application (Node.js/React/Vite)
-- **`gateway-service/`** - API Gateway service (Go)
+A distributed facial recognition authentication system with real-time video processing.
+
+## Architecture
+
+- **`frontend/`** - Web UI application (React/TypeScript/Vite)
+- **`gateway-service/`** - API Gateway and WebSocket server (Go)
 - **`ml-service/`** - ML Inference service (Python)
+- **`db/`** - Database schema and initialization scripts
+
+## Features
+
+- **Real-time Facial Recognition**: Live video stream processing for authentication
+- **WebSocket Communication**: Real-time video frame streaming from frontend to backend
+- **Face Embedding Storage**: ML-generated face embeddings stored in PostgreSQL
+- **JWT Authentication**: Secure token-based authentication system
+- **Docker Deployment**: Complete containerized deployment with docker-compose
+
+## Quick Start with Docker
+
+```bash
+# Clone the repository
+git clone https://github.com/RuneFeatherston/facial-identification.git
+cd facial-identification
+
+# Start all services with Docker
+docker-compose up --build
+
+# Access the application
+# Frontend: http://localhost:3002
+# Gateway API: http://localhost:8080
+# ML Service: http://localhost:8081
+# Database Admin: http://localhost:8082 (Adminer)
+```
+
+## Development Setup
 
 ### Prerequisites
 
@@ -10,15 +42,12 @@ Ensure you have the following installed:
 - **Node.js** (for frontend)
 - **Go** (for gateway-service)  
 - **Python 3** (for ml-service)
+- **PostgreSQL** (for database)
 - **Make** (for build orchestration)
 
-### Setup Everything
+### Local Development
 
 ```bash
-# Clone the repository
-git clone https://github.com/RuneFeatherston/facial-identification.git
-cd facial-identification
-
 # Setup all services at once
 make setup
 

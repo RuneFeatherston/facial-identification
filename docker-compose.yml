@@ -1,0 +1,114 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: facial-recognition-db
+    environment:
+      POSTGRES_DB: facial_recognition
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    networks:
+      - facial-recognition-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Gateway Service (Go)
+  gateway-service:
+    build:
+      context: ./gateway-service
+      dockerfile: Dockerfile
+    container_name: facial-recognition-gateway
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_NAME=facial_recognition
+      - DB_SSLMODE=disable
+      - JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+      - ML_SERVICE_URL=http://ml-service:8081
+      - SERVER_HOST=0.0.0.0
+      - SERVER_PORT=8080
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ml-service:
+        condition: service_healthy
+    networks:
+      - facial-recognition-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # ML Service (Python)
+  ml-service:
+    build:
+      context: ./ml-service
+      dockerfile: Dockerfile
+    container_name: facial-recognition-ml
+    environment:
+      - ML_SERVICE_HOST=0.0.0.0
+      - ML_SERVICE_PORT=8081
+    ports:
+      - "8081:8081"
+    volumes:
+      - ./ml-service/embeddings:/app/embeddings
+    networks:
+      - facial-recognition-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8081/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Frontend (React/Vite)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: facial-recognition-frontend
+    environment:
+      - VITE_WEBSOCKET_URL=ws://localhost:8080/ws
+      - VITE_API_BASE_URL=http://localhost:8080/api
+    ports:
+      - "3002:80"
+    depends_on:
+      - gateway-service
+    networks:
+      - facial-recognition-network
+
+  # Development-only services
+  # Adminer for database management
+  adminer:
+    image: adminer:4.8.1
+    container_name: facial-recognition-adminer
+    ports:
+      - "8082:8080"
+    depends_on:
+      - postgres
+    networks:
+      - facial-recognition-network
+    profiles:
+      - dev
+
+networks:
+  facial-recognition-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local

@@ -20,10 +20,10 @@ class TestServiceIntegration:
         assert hasattr(gateway_client, 'health')
         assert hasattr(ml_client, 'health')
         
-        # Call both methods (currently return None due to pass statements)
+        # Call both methods
         gateway_result = gateway_client.health()
         ml_result = ml_client.health()
         
-        # We expect None until the methods are implemented
-        assert gateway_result is None
-        assert ml_result is None
+        # Gateway health should return real data, ML health should return None (placeholder)
+        assert gateway_result is not None  # Gateway is implemented
+        assert ml_result is None  # ML client is still a placeholder

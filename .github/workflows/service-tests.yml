@@ -45,6 +45,13 @@ jobs:
             tests/api/requirements.txt
             .github/scripts/requirements.txt
       
+      - name: Install system dependencies for ML service
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake build-essential
+          # Install dlib from system packages if available (much faster)
+          sudo apt-get install -y libdlib-dev || true
+      
       - name: Install runner dependencies
         run: pip install -r .github/scripts/requirements.txt
       

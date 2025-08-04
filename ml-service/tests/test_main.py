@@ -18,8 +18,8 @@ def test_service_import():
     # Test that we can import the main function from the module
     assert hasattr(main, "main")
     assert callable(main.main)
-    assert hasattr(main, "HealthHandler")
-    assert main.HealthHandler is not None
+    assert hasattr(main, "app")
+    assert main.app is not None
 
 
 def test_service_health_logic():
@@ -32,10 +32,10 @@ def test_service_health_logic():
 
 def test_basic_functionality():
     """Test basic service functionality"""
-    # Test that we can import the HealthHandler class
-    assert hasattr(main, "HealthHandler")
+    # Test that we can import the FastAPI app
+    assert hasattr(main, "app")
 
-    # Test that the HealthHandler can be instantiated (without HTTP server)
-    # In a real test, you'd mock the request/response objects
-    handler_class = main.HealthHandler
-    assert handler_class is not None
+    # Test that the app is a FastAPI instance
+    app = main.app
+    assert app is not None
+    assert hasattr(app, "openapi")
